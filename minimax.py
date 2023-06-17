@@ -1,17 +1,19 @@
-import locals
-from random import randint
-from locals import (
+import utils
+from random import choice
+from utils import (
 	X, O, place_move, 
 	get_possible_moves,
+	win_occurred,
 	Literal
 )
 
 from copy import deepcopy
 
+
 def eval_row(row: tuple[str, str, str], player: Literal['X', 'O']) -> int:
 	other_player = X if player == O else O
 
-	if row.count(player) == 3: return 10 # overpower all other scores
+	if row.count(player) == 3: return 2 
 	if (row.count(player) == 2) and (other_player not in row): return 1
 
 	return 0
@@ -32,10 +34,9 @@ def get_player_score(board: list[list[str]], player: Literal['X', 'O']) -> int:
 	score = 0
 
 	for row in get_board_rows(board):
-		score+=eval_row(row, player)
+		score+=eval_row(row, player) ## fix this, make it so that if the computer has the option to win or block the player from winning, the computer always chooses to win
 
 	return score
-
 
 def position_eval(board: list[list[str]]) -> int:
 	"""
@@ -47,7 +48,7 @@ def position_eval(board: list[list[str]]) -> int:
 
 	O_SCORE = get_player_score(board, O)
 
-	if locals.COMP_FIRST:
+	if utils.COMP_FIRST:
 		return O_SCORE-X_SCORE
 	
 	if O_SCORE > X_SCORE:
@@ -55,7 +56,26 @@ def position_eval(board: list[list[str]]) -> int:
 	
 	return -X_SCORE
 
-def minimax(board: list[list[str]], depth: int, possible_moves: tuple[int], o_move: bool=True) ->tuple[int, int]:
+def make_obvious_move(board: list[list[str]], possible_moves: tuple[int]) -> int:
+	"""
+	Used to make the obvious move. Should be called when a possible win is detected 
+	for either player on the next turn. This will either block the human player's move 
+	or make a winning move for the computer.
+	"""
+
+	best_moves = minimax(
+			deepcopy(board),
+			1,
+			possible_moves,
+			True
+		)[1]
+	
+	for move in best_moves:
+		if win_occurred(place_move(deepcopy(board), move, O)) == O: return move
+
+	return best_moves[0]
+
+def minimax(board: list[list[str]], depth: int, possible_moves: tuple[int], o_move: bool=True) -> tuple[int, list[int]]:
 	if depth == 0: return position_eval(board), None
 
 	if not o_move:
@@ -113,11 +133,12 @@ def computer_move_impossible(board: list[list[str]], possible_moves: tuple[int])
 		True
 	)[1]
 
-	return best_moves[
-		randint(0, len(best_moves)-1)
-	]
+	return choice(best_moves)
 
 def computer_move_hard(board: list[list[str]], possible_moves: tuple[int]) -> int:
+	if (get_player_score(board, X) > 0) or (get_player_score(board, O) > 0): # if someone can win, take that spot
+		return make_obvious_move(board, possible_moves)
+	
 	if len(possible_moves) in (2, 3):
 		best_moves = minimax(
 			deepcopy(board),
@@ -126,9 +147,7 @@ def computer_move_hard(board: list[list[str]], possible_moves: tuple[int]) -> in
 			True
 		)[1]
 
-		return best_moves[
-			randint(0, len(best_moves)-1)
-		]
+		return choice(best_moves)
 	
 	best_moves = minimax(
 		deepcopy(board),
@@ -137,9 +156,7 @@ def computer_move_hard(board: list[list[str]], possible_moves: tuple[int]) -> in
 		True
 	)[1]
 
-	return best_moves[
-		randint(0, len(best_moves)-1)
-	]
+	return choice(best_moves)
 
 def computer_move_medium(board: list[list[str]], possible_moves: tuple[int]) -> int:
 	if len(possible_moves) in (6, 7, 2, 3):
@@ -149,16 +166,9 @@ def computer_move_medium(board: list[list[str]], possible_moves: tuple[int]) -> 
 
 def computer_move_easy(board: list[list[str]], possible_moves: tuple[int]) -> int:
 	if (get_player_score(board, X) > 0) or (get_player_score(board, O) > 0): # if someone can win, take that spot
-		return minimax(
-			deepcopy(board),
-			2,
-			possible_moves,
-			True
-		)[1][0]
+		return make_obvious_move(board, possible_moves)
 
-	return possible_moves[
-		randint(0, len(possible_moves)-1)
-	]
+	return choice(possible_moves)
 
 def computer_move(board: list[list[str]], possible_moves: tuple[int], difficulty: str) -> int:
 	return globals()[f"computer_move_{difficulty}"](board, possible_moves)

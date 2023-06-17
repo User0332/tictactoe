@@ -4,18 +4,23 @@ from typing import Literal, TypedDict
 X = 'X'
 O = 'O'
 COMP_FIRST = False
+FLAG_O_CAN_WIN = False
 
 class GameMoveEntry(TypedDict):
 	player: Literal['X', 'O']
 	move: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9]
+	o_score: int
 
 Game = list[GameMoveEntry]
 
-class PastGames(TypedDict):
+class PastGameEntry(TypedDict):
 	won: list[Game]
 	lost: list[Game]
 	drew: list[Game]
 
+class PastGames(TypedDict):
+	computerfirst: PastGameEntry
+	humanfirst: PastGameEntry
 
 past_games: PastGames = {}
 game_moves = Game()
@@ -75,12 +80,13 @@ def win_occurred(board: list[list[str]]) -> Literal['X', 'O']:
 	elif O_WIN: return O
 	else: return None
 
-def place_move(board: list[list[str]], move_num: int, move_char: str, log=False):
+def place_move(board: list[list[str]], move_num: int, move_char: str, log=False, o_score: int=0):
 	if log:
 		game_moves.append(
 			{
 				"player": move_char,
-				"move": move_num
+				"move": move_num,
+				"o_score": o_score
 			}
 		)
 	
@@ -89,10 +95,7 @@ def place_move(board: list[list[str]], move_num: int, move_char: str, log=False)
 			if char == str(move_num):
 				row[i] = move_char
 				return board
-
-
-
-
+			
 def full_board(board: list[list[str]]):
 	return not get_possible_moves(board)
 
@@ -102,14 +105,14 @@ def load_past_games() -> PastGames:
 
 def update_past_games(past_games: PastGames) -> None:
 	with open("./past_games.json", 'w') as f:
-		json.dump(past_games, f, indent=1)
+		json.dump(past_games, f)
 
 def add_past_game(game: Game, outcome: str) -> None:
 	games = load_past_games()
 	
-	if outcome == "win": games["won"].append(game)
-	elif outcome == "loss": games["lost"].append(game)
-	else: games["drew"].append(game)
+	if outcome == "win": games["computerfirst" if COMP_FIRST else "humanfirst"]["won"].append(game)
+	elif outcome == "loss": games["computerfirst" if COMP_FIRST else "humanfirst"]["lost"].append(game)
+	else: games["computerfirst" if COMP_FIRST else "humanfirst"]["drew"].append(game)
 
 	update_past_games(games)
 
