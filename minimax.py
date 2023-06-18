@@ -4,6 +4,7 @@ from utils import (
 	X, O, place_move, 
 	get_possible_moves,
 	win_occurred,
+	get_board_rows,
 	Literal
 )
 
@@ -17,18 +18,6 @@ def eval_row(row: tuple[str, str, str], player: Literal['X', 'O']) -> int:
 	if (row.count(player) == 2) and (other_player not in row): return 1
 
 	return 0
-
-def get_board_rows(board: list[list[str]]) -> tuple[tuple[str, str, str]]:
-	return (
-		board[0],
-		board[1],
-		board[2],
-		(board[0][0], board[1][1], board[2][2]),
-		(board[0][2], board[1][1], board[2][0]),
-		(board[0][0], board[1][0], board[2][0]),
-		(board[0][1], board[1][1], board[2][1]),
-		(board[0][2], board[1][2], board[2][2])
-	)
 
 def get_player_score(board: list[list[str]], player: Literal['X', 'O']) -> int:
 	score = 0
@@ -63,23 +52,20 @@ def make_obvious_move(board: list[list[str]], possible_moves: tuple[int]) -> int
 	or make a winning move for the computer.
 	"""
 
-	best_moves = minimax(
-			deepcopy(board),
-			1,
-			possible_moves,
-			True
-		)[1]
-	
-	for move in best_moves:
+	for move in possible_moves:
 		if win_occurred(place_move(deepcopy(board), move, O)) == O: return move
 
-	return best_moves[0]
+	for move in possible_moves:
+		if win_occurred(place_move(deepcopy(board), move, X)) == X: return move
 
 def minimax(board: list[list[str]], depth: int, possible_moves: tuple[int], o_move: bool=True) -> tuple[int, list[int]]:
 	if depth == 0: return position_eval(board), None
 
 	if not o_move:
 		min_score: int = float("inf")
+		min_move: int = None
+
+		scores: dict[int, int] = {}
 			
 		for move in possible_moves:
 			new_board = place_move(deepcopy(board), move, 'X')
@@ -93,7 +79,18 @@ def minimax(board: list[list[str]], depth: int, possible_moves: tuple[int], o_mo
 
 			min_score = min(min_score, score)
 
-		return min_score, None
+			scores[move] = score
+
+			if (score <= min_score):
+				min_score = score
+				min_move = move
+
+		if min_move is not None: del scores[min_move]
+		
+		possible_best_moves = [min_move]+[move for move, score in scores.items() if min_score == score]
+
+
+		return min_score, possible_best_moves
 
 	max_score: int = float("-inf")
 	max_move: int = None
@@ -125,11 +122,11 @@ def minimax(board: list[list[str]], depth: int, possible_moves: tuple[int], o_mo
 def computer_move_impossible(board: list[list[str]], possible_moves: tuple[int]) -> int:
 	if len(possible_moves) not in (8, 9):
 		return computer_move_hard(board, possible_moves)
-
+	
 	best_moves = minimax(
-		deepcopy(board),
+		place_move(deepcopy(board), 5, X) if len(possible_moves) == 9 else board, # assume the middle is not available
 		(len(possible_moves)-3),
-		possible_moves, 
+		[move for move in possible_moves if move != 5] if len(possible_moves) == 9 else possible_moves, 
 		True
 	)[1]
 

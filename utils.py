@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from typing import Literal, TypedDict
 
 X = 'X'
@@ -10,6 +11,7 @@ class GameMoveEntry(TypedDict):
 	player: Literal['X', 'O']
 	move: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9]
 	o_score: int
+	board_before: list[list[str]]
 
 Game = list[GameMoveEntry]
 
@@ -39,19 +41,31 @@ def get_possible_moves(board: list[list[str]]) -> tuple[int]:
 
 	return tuple(moves)
 
-def get_move(possible_moves: tuple[int]) -> int:
+def get_move(possible_moves: tuple[int], prompt: str="Your Move: ") -> int:
 	try:
-		move = int(input("Your Move: "))
+		move = int(input(prompt))
 	except ValueError:
-		print("Invalid input!")
+		print("Invalid input (move must be an integer)!")
 		return get_move(possible_moves)
 
 	if move not in possible_moves:
-		print("Invalid input!")
+		print("Invalid input (move not available/doesn't exist)!")
 		return get_move(possible_moves)
 
 
 	return move
+
+def get_board_rows(board: list[list[str]]) -> tuple[tuple[str, str, str]]:
+	return (
+		board[0],
+		board[1],
+		board[2],
+		(board[0][0], board[1][1], board[2][2]),
+		(board[0][2], board[1][1], board[2][0]),
+		(board[0][0], board[1][0], board[2][0]),
+		(board[0][1], board[1][1], board[2][1]),
+		(board[0][2], board[1][2], board[2][2])
+	)
 
 def win_occurred(board: list[list[str]]) -> Literal['X', 'O']:
 	X_WIN = (
@@ -65,6 +79,8 @@ def win_occurred(board: list[list[str]]) -> Literal['X', 'O']:
 		(board[0][2]+board[1][2]+board[2][2] == "XXX")
 	)
 
+	if X_WIN: return X
+
 	O_WIN = (
 		(''.join(board[0]) == "OOO") or
 		(''.join(board[1]) == "OOO") or
@@ -76,9 +92,9 @@ def win_occurred(board: list[list[str]]) -> Literal['X', 'O']:
 		(board[0][2]+board[1][2]+board[2][2] == "OOO")
 	)
 
-	if X_WIN: return X
-	elif O_WIN: return O
-	else: return None
+	if O_WIN: return O
+	
+	return None
 
 def place_move(board: list[list[str]], move_num: int, move_char: str, log=False, o_score: int=0):
 	if log:
@@ -86,7 +102,8 @@ def place_move(board: list[list[str]], move_num: int, move_char: str, log=False,
 			{
 				"player": move_char,
 				"move": move_num,
-				"o_score": o_score
+				"o_score": o_score,
+				"board_before": deepcopy(board)
 			}
 		)
 	

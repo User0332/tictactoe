@@ -91,6 +91,8 @@ def get_move(move_num: int, possible_moves: tuple[int], past_games: PastGameEntr
 
 	return choice(biased_moves)
 
+# find an algorithm to trace a given move to the game's output (possibly using common strategies or win patterns)
+# make a minimax-reinforcement algorithm based off of this
 def computer_move_rf(board: list[list[str]], possible_moves: tuple[int], difficulty: Literal["reinforcement"]) -> int:
 	past_games = load_past_games()["computerfirst" if utils.COMP_FIRST else "humanfirst"]
 
