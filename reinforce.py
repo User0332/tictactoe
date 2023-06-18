@@ -3,7 +3,12 @@ from random import choice
 from utils import (
 	load_past_games,
 	PastGameEntry,
-	Game
+	Game,
+	O
+)
+from tracemove import (
+	get_win_contribution,
+	get_loss_contribution,
 )
 from typing import Literal
 
@@ -22,11 +27,11 @@ def rotate90(moves: Game):
 def try_match(curr_game: Game, match_to: Game) -> tuple[bool, Game]:
 	i = 0
 
-	if match_to == curr_game: return (True, match_to)
+	if match_to[:-1] == curr_game: return (True, match_to)
 
 	while i != 3:
 		rotate90(match_to)
-		if match_to == curr_game: return (True, match_to)
+		if match_to[:-1] == curr_game: return (True, match_to)
 		i+=1
 
 	return (False, None)
@@ -37,18 +42,20 @@ def get_move(move_num: int, possible_moves: tuple[int], past_games: PastGameEntr
 
 	for game in past_games["won"]:
 		# if the moves below don't match, try board rotation (and transpose the necessary moves using the same rotation)
-		matched, game = try_match(utils.game_moves, game[:curr_comp_move_num])
+		matched, game = try_match(utils.game_moves, game[:curr_comp_move_num+1])
 		if not matched: continue
 
 		try: move = game[curr_comp_move_num]["move"]
 		except IndexError: continue
 
 		if move not in move_bias: continue
+
+		game_moves = [item["move"] for item in game]
 		
-		move_bias[move]+=2
+		move_bias[move]+=(4*get_win_contribution(move, game_moves, O, game))
 	
 	for game in past_games["drew"]:
-		matched, game = try_match(utils.game_moves, game[:curr_comp_move_num])
+		matched, game = try_match(utils.game_moves, game[:curr_comp_move_num+1])
 		if not matched: continue
 
 		try: move = game[curr_comp_move_num]["move"]
@@ -56,10 +63,15 @@ def get_move(move_num: int, possible_moves: tuple[int], past_games: PastGameEntr
 		
 		if move not in move_bias: continue
 
-		move_bias[move]+=1
+		game_moves = [item["move"] for item in game]
+
+		move_bias[move]+=(
+			(2*get_win_contribution(move, game_moves, O, game)) +
+			(0.3/get_loss_contribution(move, game_moves, O, game))
+		)
 
 	for game in past_games["lost"]:
-		matched, game = try_match(utils.game_moves, game[:curr_comp_move_num])
+		matched, game = try_match(utils.game_moves, game[:curr_comp_move_num+1])
 		if not matched: continue
 
 		try: move = game[curr_comp_move_num]["move"]
@@ -67,22 +79,14 @@ def get_move(move_num: int, possible_moves: tuple[int], past_games: PastGameEntr
 
 		if move not in move_bias: continue
 
-		move_bias[move]-=2
+		game_moves = [item["move"] for item in game]
 
-	for game in past_games["won"]+past_games["lost"]+past_games["drew"]:
-		matched, game = try_match(utils.game_moves, game[:curr_comp_move_num])
-		if not matched: continue
-
-		try: move = game[curr_comp_move_num]["move"]
-		except IndexError: continue
-
-		if move not in move_bias: continue
-
-		move_bias[move]+=game["o_score"]
+		move_bias[move]-=(4*get_loss_contribution(move, game_moves, O, game))
 
 	biased_moves: list[int] = [*possible_moves]
 
 	for move, bias in move_bias.items():
+		bias = round(bias)
 		if bias < 0:
 			biased_moves.remove(move)
 			continue

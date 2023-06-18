@@ -6,12 +6,18 @@ X = 'X'
 O = 'O'
 COMP_FIRST = False
 FLAG_O_CAN_WIN = False
+HIGHLIGHT_LOSING_MOVE = "\u001b[41m"
+HIGHLIGHT_SUBOPTIMAL_MOVE = "\u001b[43m"
+HIGHLIGHT_GOOD_MOVE = "\u001b[42m"
+HIGHLIGHT_OPTIMAL_MOVE = "\u001b[46m"
+HIGHLIGHT_RESET = "\u001b[0m"
+HIGHLIGHT_FOCUS_MOVE = "\u001b[45m"
 
 class GameMoveEntry(TypedDict):
 	player: Literal['X', 'O']
 	move: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9]
-	o_score: int
 	board_before: list[list[str]]
+	board_after: list[list[str]]
 
 Game = list[GameMoveEntry]
 
@@ -27,9 +33,17 @@ class PastGames(TypedDict):
 past_games: PastGames = {}
 game_moves = Game()
 
-def bprint(board: list[list[str]]):
+def bprint(board: list[list[str]], highlight=False, prepend: str=""):
 	for row in board:
-		print(' '.join(row))
+		if highlight:
+			for char in row:
+				try: print(f"{prepend}{char[0:5]} {char[5]} {HIGHLIGHT_RESET}", end="")
+				except IndexError: print(f"{prepend} {char} ", end="")
+
+			print()
+			continue
+
+		print(prepend+' '.join(row))
 
 def get_possible_moves(board: list[list[str]]) -> tuple[int]:
 	moves = list[int]()	
@@ -46,12 +60,11 @@ def get_move(possible_moves: tuple[int], prompt: str="Your Move: ") -> int:
 		move = int(input(prompt))
 	except ValueError:
 		print("Invalid input (move must be an integer)!")
-		return get_move(possible_moves)
+		return get_move(possible_moves, prompt=prompt)
 
 	if move not in possible_moves:
 		print("Invalid input (move not available/doesn't exist)!")
-		return get_move(possible_moves)
-
+		return get_move(possible_moves, prompt=prompt)
 
 	return move
 
@@ -96,13 +109,12 @@ def win_occurred(board: list[list[str]]) -> Literal['X', 'O']:
 	
 	return None
 
-def place_move(board: list[list[str]], move_num: int, move_char: str, log=False, o_score: int=0):
+def place_move(board: list[list[str]], move_num: int, move_char: str, log=False):
 	if log:
 		game_moves.append(
 			{
 				"player": move_char,
 				"move": move_num,
-				"o_score": o_score,
 				"board_before": deepcopy(board)
 			}
 		)
@@ -111,6 +123,7 @@ def place_move(board: list[list[str]], move_num: int, move_char: str, log=False,
 		for i, char in enumerate(row):
 			if char == str(move_num):
 				row[i] = move_char
+				if log: game_moves[-1]["board_after"] = deepcopy(board)
 				return board
 			
 def full_board(board: list[list[str]]):
