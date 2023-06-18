@@ -104,7 +104,7 @@ def get_full_loss_contrib2(moves: list[int], player: str, game: Game=utils.game_
 				board_before_move1[0][2],
 				board_before_move1[2][2]
 			)
-		) and moves[1] != 5: contrib[moves[0]] = (10, "Losing Move") # basically a loss, make the lose contribution large
+		) and moves[0] != 5: contrib[moves[0]] = (10, "Losing Move") # basically a loss, make the lose contribution large
 		elif moves[0] in minimax(
 			deepcopy(board_before_move1),
 			4,

@@ -1,11 +1,9 @@
 import os
 import utils
 from copy import deepcopy
-from minimax import computer_move, get_player_score
+from minimax import computer_move
 from reinforce import computer_move_rf
 from tracemove import (
-    get_full_win_contrib,
-    get_full_loss_contrib,
     get_full_win_contrib2,
     get_full_loss_contrib2,
     highlight_moves
@@ -107,54 +105,7 @@ def computer_first(difficulty: str, use_rf: bool) -> bool:
 			if use_rf: add_this_game("loss")
 			return True
 
-def basic_analyze(human_win: bool):
-	loss_contrib = {
-	X: get_full_loss_contrib(board, [move["move"] for move in utils.game_moves if move["player"] == X], X),
-	O: get_full_loss_contrib(board, [move["move"] for move in utils.game_moves if move["player"] == O], O)
-}
-
-	win_contrib = {
-		X: get_full_win_contrib(board, [move["move"] for move in utils.game_moves if move["player"] == X], X),
-		O: get_full_win_contrib(board, [move["move"] for move in utils.game_moves if move["player"] == O], O)
-	}
-
-	while 1:
-		clear()
-		bprint(board)
-
-		try:
-			move = get_move((1, 2, 3, 4, 5, 6, 7, 8, 9), prompt="Move to Analyze: ")
-
-			try: move_num = [i for i, game_move in enumerate(utils.game_moves) if game_move["move"] == move][0]+1
-			except IndexError:
-				input("No one moved there!\nPress enter to continue ")
-				continue
-
-			player = board[(move-1)//3][(move-1) % 3]
-
-			if (player in (X, O)) and (human_win is None): # tie case
-				print(f"Move #{move_num}'s contribution to a possible loss (player: {player}): {loss_contrib[player][move]*100}%")
-				print(f"Move #{move_num}'s contribution to a possible win (player: {player}): {win_contrib[player][move]*100}%")
-				input("Press enter to continue ")
-				continue
-
-			if ((player == O) and human_win) or ((player == X) and not human_win):
-				print(f"Move #{move_num}'s contribution to loss (player: {player}): {loss_contrib[player][move]*100}%")
-				input("Press enter to continue ")
-				continue
-
-			if ((player == X) and human_win) or ((player == O) and not human_win):
-				print(f"Move #{move_num}'s contribution to win (player: {player}): {win_contrib[player][move]*100}%")
-				input("Press enter to continue ")
-				continue
-
-			input("No one moved there!\nPress enter to continue ")
-			
-		except KeyboardInterrupt:
-			print("<Exit>")
-			exit(0)
-
-def adv_analyze(human_win: bool):
+def analyze_game(human_win: bool):
 	loss_contrib = {
 		X: get_full_loss_contrib2([move["move"] for move in utils.game_moves if move["player"] == X], X),
 		O: get_full_loss_contrib2([move["move"] for move in utils.game_moves if move["player"] == O], O)
@@ -168,6 +119,13 @@ def adv_analyze(human_win: bool):
 	printing_board = deepcopy(board)
 
 	highlight_moves(printing_board, { **loss_contrib[X], **loss_contrib[O] })
+	
+	for i, move in enumerate(utils.game_moves, start=1):
+		move_num = move["move"]
+		row = move["board_after"][(move_num-1)//3]
+		idx = (move_num-1) % 3
+
+		row[idx] = f"{HIGHLIGHT_FOCUS_MOVE}{row[idx]}"
 
 	while 1:
 		clear()
@@ -175,19 +133,14 @@ def adv_analyze(human_win: bool):
 		print("-- Tic-Tac-Toe Game Review --")
 
 		for i, move in enumerate(utils.game_moves, start=1):
-			move_num = move["move"]
-			print(f"{i}. {move['player']} played {move_num}")
-
-			row = move["board_after"][(move_num-1)//3]
-			idx = (move_num-1) % 3
-
-			row[idx] = f"{HIGHLIGHT_FOCUS_MOVE}{row[idx]}"
+			print(f"{i}. {move['player']} played {move['move']}")
 
 			bprint(move["board_after"], highlight=True, prepend="  ")
 
 		print("\n-- Board Analyzation --")
 		
 		bprint(printing_board, highlight=True)
+		print() # newline
 
 		try:
 			move_num = get_move((i for i in range(1, len(utils.game_moves)+1)), prompt="Move Number to Analyze: ")
@@ -283,7 +236,7 @@ while 1:
 
 	print("Invalid Choice!")
 
-try: analyze_game()
+try: analyze_game(human_win)
 except KeyboardInterrupt:
 	print("<Exit>")
 	exit(0)
